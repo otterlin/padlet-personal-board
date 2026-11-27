@@ -33,7 +33,7 @@ const state = {
   editUploadedName: '',
   boardSettings: {
     boardTitle: '我的個人靈感塗鴉牆',
-    boardSubtitle: '隨時記錄靈感、分享圖片與好站連結 — 支援 Google Sheet 雲端同步',
+    boardSubtitle: '隨時記錄靈感、分享圖片與好站連結',
     boardBg: 'bg-cork',
     announcement: '',
     allowPosting: true,
