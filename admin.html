@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>塗鴉牆後臺管理系統 | Padlet Admin Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="admin-body">
+  <!-- 管理員登入鎖定畫面 -->
+  <div class="admin-login-overlay" id="loginOverlay">
+    <div class="admin-login-card">
+      <div class="login-icon">🛡️</div>
+      <h2>塗鴉牆後臺管理系統</h2>
+      <p>請輸入管理員密碼以進入後臺控制台</p>
+      <form id="loginForm">
+        <input
+          type="password"
+          id="adminPinInput"
+          placeholder="請輸入管理員密碼 (預設: 1234)"
+          required
+          autocomplete="current-password"
+        />
+        <div class="login-error hidden" id="loginError">❌ 密碼錯誤，請重新輸入（預設密碼為 1234）</div>
+        <button type="submit" class="btn btn-primary btn-block">🔓 登入後臺</button>
+      </form>
+      <div class="login-footer">
+        <a href="index.html">← 返回前台塗鴉牆</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 後臺主介面 -->
+  <div class="admin-layout hidden" id="adminApp">
+    <!-- 左側導覽欄 -->
+    <aside class="admin-sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-logo">🛡️</div>
+        <div>
+          <h2>Padlet 後臺管理</h2>
+          <span class="db-mini-badge" id="adminDbBadge">本機模式</span>
+        </div>
+      </div>
+
+      <nav class="sidebar-nav">
+        <button class="nav-item active" data-section="posts">
+          📋 <span>貼文審核與管理</span>
+          <span class="nav-badge" id="navPendingBadge">0</span>
+        </button>
+        <button class="nav-item" data-section="comments">
+          💬 <span>留言互動管理</span>
+        </button>
+        <button class="nav-item" data-section="analytics">
+          📊 <span>數據統計分析</span>
+        </button>
+        <button class="nav-item" data-section="settings">
+          ⚙️ <span>牆面與權限設定</span>
+        </button>
+        <button class="nav-item" data-section="database">
+          🗄️ <span>Google Sheet 資料庫</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-footer">
+        <a href="index.html" class="btn btn-secondary btn-block">🎨 前往塗鴉牆前台</a>
+        <button class="btn btn-ghost btn-block" id="logoutBtn">🔒 登出後臺</button>
+      </div>
+    </aside>
+
+    <!-- 右側主內容區 -->
+    <div class="admin-main">
+      <!-- 頂部工具列 -->
+      <header class="admin-topbar">
+        <div class="topbar-title">
+          <h1 id="sectionTitle">📋 貼文審核與管理</h1>
+        </div>
+        <div class="topbar-actions">
+          <button class="btn btn-icon" id="adminRefreshBtn">🔄 重新同步</button>
+          <button class="btn btn-primary" id="adminNewPostBtn">＋ 新增官方貼文</button>
+        </div>
+      </header>
+
+      <!-- 載入進度條 -->
+      <div class="loading-bar hidden" id="adminLoadingBar">
+        <div class="loading-progress"></div>
+      </div>
+
+      <!-- KPI 數據摘要卡片列 -->
+      <section class="kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-blue">📝</div>
+          <div class="kpi-info">
+            <span class="kpi-label">總貼文數</span>
+            <strong class="kpi-value" id="kpiTotalPosts">0</strong>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-amber">⏳</div>
+          <div class="kpi-info">
+            <span class="kpi-label">待審核貼文</span>
+            <strong class="kpi-value" id="kpiPendingPosts">0</strong>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-rose">❤️</div>
+          <div class="kpi-info">
+            <span class="kpi-label">累計獲得愛心</span>
+            <strong class="kpi-value" id="kpiTotalLikes">0</strong>
+          </div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-icon kpi-emerald">💬</div>
+          <div class="kpi-info">
+            <span class="kpi-label">總留言互動數</span>
+            <strong class="kpi-value" id="kpiTotalComments">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <!-- 分頁 1：貼文審核與管理 -->
+      <section class="admin-section" id="section-posts">
+        <div class="panel-card">
+          <div class="table-toolbar">
+            <div class="toolbar-filters">
+              <input type="text" id="adminSearchInput" placeholder="🔍 搜尋標題、內容、作者..." />
+              <select id="adminStatusFilter">
+                <option value="all">所有狀態</option>
+                <option value="approved">✅ 已公開 (Approved)</option>
+                <option value="pending">⏳ 待審核 (Pending)</option>
+                <option value="hidden">👁️‍🗨️ 已隱藏 (Hidden)</option>
+              </select>
+              <select id="adminCategoryFilter">
+                <option value="all">所有分類</option>
+                <option value="靈感筆記">💡 靈感筆記</option>
+                <option value="作品分享">🖼️ 作品分享</option>
+                <option value="好站連結">🔗 好站連結</option>
+                <option value="待辦事項">📌 待辦事項</option>
+                <option value="心情隨筆">💬 心情隨筆</option>
+              </select>
+            </div>
+
+            <div class="toolbar-batch">
+              <span class="selected-count">已選取 <strong id="selectedCount">0</strong> 筆</span>
+              <button class="btn btn-sm btn-secondary" id="batchApproveBtn">✅ 批次通過</button>
+              <button class="btn btn-sm btn-secondary" id="batchHideBtn">👁️‍🗨️ 批次隱藏</button>
+              <button class="btn btn-sm btn-danger" id="batchDeleteBtn">🗑️ 批次刪除</button>
+            </div>
+          </div>
+
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th width="40"><input type="checkbox" id="selectAllCheckbox" /></th>
+                  <th width="100">狀態</th>
+                  <th width="85">附件預覽</th>
+                  <th>標題與內容摘要</th>
+                  <th width="110">作者</th>
+                  <th width="110">分類 / 顏色</th>
+                  <th width="90">互動</th>
+                  <th width="120">發布時間</th>
+                  <th width="190">管理操作</th>
+                </tr>
+              </thead>
+              <tbody id="adminPostsTbody">
+                <!-- 由 admin.js 動態渲染 -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 分頁 2：留言互動管理 -->
+      <section class="admin-section hidden" id="section-comments">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3>💬 全部卡片留言回覆一覽</h3>
+            <p class="text-muted">可在此快速檢視所有訪客在各張貼文下的留言，並一鍵移除不當留言。</p>
+          </div>
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th width="140">留言者</th>
+                  <th>留言內容</th>
+                  <th width="240">所屬貼文標題</th>
+                  <th width="150">留言時間</th>
+                  <th width="100">操作</th>
+                </tr>
+              </thead>
+              <tbody id="adminCommentsTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 分頁 3：數據統計分析 -->
+      <section class="admin-section hidden" id="section-analytics">
+        <div class="analytics-grid">
+          <div class="panel-card">
+            <h3>🏷️ 各分類貼文數量分佈</h3>
+            <div id="categoryChartContainer" class="bar-chart-list"></div>
+          </div>
+          <div class="panel-card">
+            <h3>🏆 熱門貼文排行榜 (依愛心與留言數)</h3>
+            <div id="topPostsList" class="ranking-list"></div>
+          </div>
+          <div class="panel-card">
+            <h3>✍️ 活躍投稿作者排行</h3>
+            <div id="topAuthorsList" class="ranking-list"></div>
+          </div>
+          <div class="panel-card">
+            <h3>🎨 便利貼顏色偏好分佈</h3>
+            <div id="colorChartContainer" class="bar-chart-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 分頁 4：牆面與權限設定 -->
+      <section class="admin-section hidden" id="section-settings">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3>⚙️ 塗鴉牆全域外觀與權限設定</h3>
+            <p class="text-muted">修改後點擊「儲存牆面設定」，將同步更新至前台與 Google Sheet `Settings` 工作表。</p>
+          </div>
+          <form id="boardSettingsForm" class="settings-form">
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label for="cfgBoardTitle">🏷️ 塗鴉牆主標題</label>
+                <input type="text" id="cfgBoardTitle" required />
+              </div>
+              <div class="form-group">
+                <label for="cfgBoardBg">🎨 預設背景主題</label>
+                <select id="cfgBoardBg">
+                  <option value="bg-cork">經典軟木塞 (Cork)</option>
+                  <option value="bg-dark">星空深色 (Dark)</option>
+                  <option value="bg-pastel">晨曦漸層 (Pastel)</option>
+                  <option value="bg-grid">極簡方格 (Grid)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label for="cfgBoardSubtitle">📝 塗鴉牆副標題說明</label>
+              <input type="text" id="cfgBoardSubtitle" />
+            </div>
+
+            <div class="form-group">
+              <label for="cfgAnnouncement">📢 頂部置頂公告橫幅 <span class="sub-label">(留空則不顯示公告列)</span></label>
+              <input type="text" id="cfgAnnouncement" placeholder="例如：歡迎同學上傳本週專題作品！請記得填寫組別與姓名～" />
+            </div>
+
+            <hr class="divider" />
+            <h4>🛡️ 發言權限與審核機制</h4>
+
+            <div class="switch-list">
+              <label class="switch-row">
+                <div>
+                  <strong>開放訪客新增貼文</strong>
+                  <p>關閉後，前台將隱藏「＋新增貼文」按鈕，僅管理員可由後臺發文。</p>
+                </div>
+                <input type="checkbox" id="cfgAllowPosting" checked />
+              </label>
+
+              <label class="switch-row">
+                <div>
+                  <strong>啟用「先審核後公開」機制</strong>
+                  <p>開啟後，前台新發布的貼文會先進入「⏳ 待審核」狀態，需管理員於後臺核准才會顯示於前台。</p>
+                </div>
+                <input type="checkbox" id="cfgRequireApproval" />
+              </label>
+
+              <label class="switch-row">
+                <div>
+                  <strong>開放貼文下方留言互動</strong>
+                  <p>關閉後，前台卡片將停止新增留言回覆。</p>
+                </div>
+                <input type="checkbox" id="cfgAllowComments" checked />
+              </label>
+            </div>
+
+            <hr class="divider" />
+            <h4>🔑 後臺管理員密碼設定</h4>
+            <div class="form-row two-cols">
+              <div class="form-group">
+                <label for="cfgNewPin">修改後臺管理密碼 <span class="sub-label">(留空則維持原密碼)</span></label>
+                <input type="password" id="cfgNewPin" placeholder="輸入新密碼..." />
+              </div>
+            </div>
+
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">💾 儲存牆面設定</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+      <!-- 分頁 5：Google Sheet 資料庫與備份匯入 -->
+      <section class="admin-section hidden" id="section-database">
+        <div class="panel-card">
+          <div class="panel-header">
+            <h3>🗄️ Google Sheet 資料庫連線與資料備份</h3>
+            <p class="text-muted">管理 Google Apps Script Web App 連線網址，或將貼文匯出成 CSV / JSON 報表。</p>
+          </div>
+
+          <div class="form-group">
+            <label for="adminGasUrlInput">🔗 Google Apps Script Web App URL</label>
+            <div class="input-with-btn">
+              <input type="url" id="adminGasUrlInput" placeholder="https://script.google.com/macros/s/AKfycb.../exec" />
+              <button type="button" class="btn btn-secondary" id="adminTestGasBtn">🔌 測試連線</button>
+              <button type="button" class="btn btn-primary" id="adminSaveGasBtn">💾 儲存連線</button>
+            </div>
+            <p id="adminGasTestMsg" class="test-result-msg"></p>
+          </div>
+
+          <hr class="divider" />
+          <h4>📦 資料匯出、匯入與清理</h4>
+          <div class="db-tools-grid">
+            <div class="tool-box">
+              <h5>📊 匯出 Excel / CSV 報表</h5>
+              <p>將所有貼文（含作者、分類、時間、按讚數、連結）匯出為 UTF-8 CSV 檔案，可直接用 Excel 開啟評分。</p>
+              <button type="button" class="btn btn-secondary" id="exportCsvBtn">📥 匯出 CSV 試算表</button>
+            </div>
+
+            <div class="tool-box">
+              <h5>🗂️ 匯出完整 JSON 備份</h5>
+              <p>完整備份所有貼文與留言結構，可用於日後還原或遷移。</p>
+              <button type="button" class="btn btn-secondary" id="adminExportJsonBtn">📥 下載 JSON 備份</button>
+            </div>
+
+            <div class="tool-box">
+              <h5>📤 匯入 JSON 備份資料</h5>
+              <p>從先前備份的 JSON 檔案還原貼文資料。</p>
+              <input type="file" id="importJsonFile" accept=".json" hidden />
+              <button type="button" class="btn btn-secondary" id="importJsonBtn">📤 選擇 JSON 檔案匯入</button>
+            </div>
+
+            <div class="tool-box">
+              <h5>📋 複製新版 Apps Script 後端</h5>
+              <p>包含完整後臺管理 API（批次刪除、審核、雲端設定同步）的後端程式碼。</p>
+              <button type="button" class="btn btn-secondary" id="adminCopyGasBtn">📋 一鍵複製新版 .gs 程式碼</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- 編輯 / 新增貼文 Modal -->
+  <div class="modal-overlay hidden" id="editPostModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="editModalTitle">✏️ 編輯貼文</h2>
+        <button class="modal-close" id="closeEditModal">&times;</button>
+      </div>
+      <form id="editPostForm" class="modal-body">
+        <input type="hidden" id="editPostId" />
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="editAuthor">👤 作者暱稱</label>
+            <input type="text" id="editAuthor" required />
+          </div>
+          <div class="form-group">
+            <label for="editStatus">🛡️ 審核狀態</label>
+            <select id="editStatus">
+              <option value="approved">✅ 已公開 (Approved)</option>
+              <option value="pending">⏳ 待審核 (Pending)</option>
+              <option value="hidden">👁️‍🗨️ 已隱藏 (Hidden)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="editCategory">🏷️ 分類標籤</label>
+            <select id="editCategory">
+              <option value="靈感筆記">💡 靈感筆記</option>
+              <option value="作品分享">🖼️ 作品分享</option>
+              <option value="好站連結">🔗 好站連結</option>
+              <option value="待辦事項">📌 待辦事項</option>
+              <option value="心情隨筆">💬 心情隨筆</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="editColor">🎨 便利貼顏色</label>
+            <select id="editColor">
+              <option value="white">純淨白</option>
+              <option value="yellow">暖陽黃</option>
+              <option value="pink">櫻花粉</option>
+              <option value="blue">晴空藍</option>
+              <option value="green">薄荷綠</option>
+              <option value="purple">薰衣草紫</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="editTitle">📝 標題</label>
+          <input type="text" id="editTitle" required />
+        </div>
+
+        <div class="form-group">
+          <label for="editContent">💬 內容</label>
+          <textarea id="editContent" rows="4"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="editImageUrl">🖼️ 圖片網址 (或上傳替換新圖片)</label>
+          <input type="text" id="editImageUrl" placeholder="https://... 或選擇下方檔案上傳" />
+          <input type="file" id="editImageFile" accept="image/*" style="margin-top: 6px; font-size: 0.82rem;" />
+        </div>
+
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="editLinkUrl">🔗 外部連結網址</label>
+            <input type="url" id="editLinkUrl" placeholder="https://..." />
+          </div>
+          <div class="form-group">
+            <label for="editLinkTitle">🔗 連結顯示名稱</label>
+            <input type="text" id="editLinkTitle" placeholder="選填" />
+          </div>
+        </div>
+
+        <div class="form-row two-cols align-center">
+          <div class="form-group">
+            <label for="editLikes">❤️ 愛心數量</label>
+            <input type="number" id="editLikes" min="0" value="0" />
+          </div>
+          <div class="form-group pin-checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="editPinned" />
+              <span>📌 置頂這則貼文</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancelEditBtn">取消</button>
+          <button type="submit" class="btn btn-primary" id="saveEditBtn">💾 儲存變更</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast 通知 -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="admin.js"></script>
+</body>
+</html>
