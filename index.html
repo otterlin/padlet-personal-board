@@ -17,12 +17,8 @@
       <div class="board-title-group">
         <div class="board-title-row">
           <h1 id="boardTitle" contenteditable="true" spellcheck="false" title="點擊可直接修改牆面標題">我的個人靈感塗鴉牆</h1>
-          <span class="db-badge" id="dbStatusBadge" title="點擊設定 Google Sheet 資料庫">
-            <span class="status-dot"></span>
-            <span id="dbStatusText">本機展示模式</span>
-          </span>
         </div>
-        <p id="boardSubtitle" contenteditable="true" spellcheck="false" title="點擊可直接修改副標題">隨時記錄靈感、分享圖片與好站連結 — 支援 Google Sheet 雲端同步</p>
+        <p id="boardSubtitle" contenteditable="true" spellcheck="false" title="點擊可直接修改副標題">隨時記錄靈感、分享圖片與好站連結</p>
       </div>
     </div>
 
@@ -47,9 +43,6 @@
       <a href="admin.html" class="btn btn-secondary" title="進入塗鴉牆後臺管理系統">
         🛡️ <span>後臺管理</span>
       </a>
-      <button class="btn btn-secondary" id="settingsBtn">
-        ⚙️ <span>資料庫設定</span>
-      </button>
       <button class="btn btn-primary" id="newPostTopBtn">
         ＋ <span>新增貼文</span>
       </button>
@@ -153,7 +146,7 @@
               <div class="drop-zone-content" id="dropZonePrompt">
                 <span class="drop-icon">📷</span>
                 <p>點擊選擇圖片、拖曳圖片至此，或直接按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 貼上截圖</p>
-                <span class="drop-hint">系統會自動壓縮優化並上傳至 Google Drive / 資料庫</span>
+                <span class="drop-hint">系統會自動壓縮優化並上傳圖片</span>
               </div>
               <div class="image-preview-wrap hidden" id="imagePreviewWrap">
                 <img id="imagePreview" src="" alt="圖片預覽" />
@@ -202,71 +195,6 @@
           <button type="submit" class="btn btn-primary" id="submitPostBtn">🚀 發布貼文</button>
         </div>
       </form>
-    </div>
-  </div>
-
-  <!-- Google Sheet 資料庫設定 Modal -->
-  <div class="modal-overlay hidden" id="settingsModal">
-    <div class="modal-card modal-lg">
-      <div class="modal-header">
-        <h2>⚙️ Google Sheet 資料庫連線設定</h2>
-        <button class="modal-close" id="closeSettingsModal" aria-label="關閉">&times;</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label for="gasUrlInput">🔗 Google Apps Script 網頁應用程式網址 (Web App URL)</label>
-          <input
-            type="url"
-            id="gasUrlInput"
-            placeholder="https://script.google.com/macros/s/AKfycb.../exec"
-          />
-          <p class="field-help">
-            貼上部署後的 <code>https://script.google.com/macros/s/.../exec</code> 網址後，所有的貼文、留言、按讚與圖片都會即時同步到你的 Google Sheet 與 Google Drive！若留空則使用瀏覽器本機儲存 (LocalStorage)。
-          </p>
-        </div>
-
-        <div class="connection-test-row">
-          <button type="button" class="btn btn-secondary" id="testConnectionBtn">🔌 測試連線</button>
-          <button type="button" class="btn btn-ghost" id="exportJsonBtn">📥 匯出目前資料 (JSON)</button>
-          <span id="testResultMsg" class="test-result-msg"></span>
-        </div>
-
-        <hr class="divider" />
-
-        <div class="setup-guide">
-          <h3>📖 3 分鐘快速串接 Google Sheet 教學</h3>
-          <ol class="guide-steps">
-            <li>
-              前往 <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> 建立一個全新的 Google 試算表。
-            </li>
-            <li>
-              點選試算表上方選單的 <strong>「擴充功能」&rarr;「Apps Script」</strong>。
-            </li>
-            <li>
-              打開本專案資料夾中的 <code>google-apps-script.gs</code>（或點擊下方按鈕複製程式碼），全部貼上並取代編輯器內的程式碼，按 <kbd>Ctrl</kbd>+<kbd>S</kbd> 儲存。
-              <div class="copy-code-bar">
-                <button type="button" class="btn btn-sm btn-secondary" id="copyGasCodeBtn">📋 一鍵複製 Apps Script 後端程式碼</button>
-              </div>
-            </li>
-            <li>
-              點選右上角 <strong>「部署」&rarr;「新增部署作業」</strong>：
-              <ul>
-                <li>選取類型：<strong>「網頁應用程式 (Web App)」</strong></li>
-                <li>執行身分：<strong>「我 (Me)」</strong></li>
-                <li>誰可以存取：<strong>「所有人 (Anyone)」</strong></li>
-              </ul>
-            </li>
-            <li>
-              點擊「部署」並完成 Google 權限核准後，複製產生的 <strong>網頁應用程式網址</strong>，貼到上方輸入框並按「儲存設定」即可！
-            </li>
-          </ol>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn btn-ghost" id="clearGasUrlBtn">切換回本機模式</button>
-          <button type="button" class="btn btn-primary" id="saveSettingsBtn">💾 儲存並連線</button>
-        </div>
-      </div>
     </div>
   </div>
 
