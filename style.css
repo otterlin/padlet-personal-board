@@ -2229,3 +2229,139 @@ code {
   .slide-nav-arrow.prev { left: 8px; }
   .slide-nav-arrow.next { right: 8px; }
 }
+
+
+/* ==========================================
+   直式 (Portrait) 與 橫式 (Landscape) 版面樣式
+   ========================================== */
+
+.orientation-group {
+  display: inline-flex;
+  gap: 6px;
+}
+
+/* 1. 塗鴉牆主畫布 - 橫式卡片模式 (Landscape Grid) */
+.masonry-grid.landscape-view {
+  column-count: unset;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(480px, 1fr));
+  gap: 22px;
+  max-width: 1600px;
+}
+
+@media (max-width: 600px) {
+  .masonry-grid.landscape-view {
+    grid-template-columns: 1fr;
+  }
+}
+
+.masonry-grid.landscape-view .padlet-card {
+  margin-bottom: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.masonry-grid.landscape-view .padlet-card.has-image .card-body {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+  align-items: start;
+}
+
+.masonry-grid.landscape-view .padlet-card.has-image .card-image-wrap {
+  grid-column: 1;
+  grid-row: 1 / span 4;
+  margin: 0;
+  border-radius: 12px;
+  height: 100%;
+  min-height: 150px;
+  max-height: 220px;
+}
+
+.masonry-grid.landscape-view .padlet-card.has-image .card-image-wrap img {
+  width: 100%;
+  height: 100%;
+  max-height: 220px;
+  object-fit: cover;
+}
+
+.masonry-grid.landscape-view .padlet-card.has-image .card-title,
+.masonry-grid.landscape-view .padlet-card.has-image .card-content,
+.masonry-grid.landscape-view .padlet-card.has-image .card-link-box {
+  grid-column: 2;
+}
+
+@media (max-width: 520px) {
+  .masonry-grid.landscape-view .padlet-card.has-image .card-body {
+    grid-template-columns: 1fr;
+  }
+  .masonry-grid.landscape-view .padlet-card.has-image .card-image-wrap {
+    grid-row: auto;
+  }
+  .masonry-grid.landscape-view .padlet-card.has-image .card-title,
+  .masonry-grid.landscape-view .padlet-card.has-image .card-content,
+  .masonry-grid.landscape-view .padlet-card.has-image .card-link-box {
+    grid-column: 1;
+  }
+}
+
+/* 2. 全螢幕播放模式 - 直式 (Portrait) 與 橫式 (Landscape) 切換 */
+.slide-orient-group {
+  display: inline-flex;
+  background: rgba(15, 23, 42, 0.6);
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  gap: 4px;
+}
+
+.slide-orient-group .slide-ctrl-btn {
+  border: none;
+  padding: 5px 12px;
+  background: transparent;
+}
+
+.slide-orient-group .slide-ctrl-btn.active-orient {
+  background: var(--primary);
+  color: #fff;
+}
+
+/* 播放模式：直式卡片 (上圖下文，適合手機比例或直幅海報圖片) */
+.slide-showcase-card.orient-portrait {
+  grid-template-columns: 1fr !important;
+  max-width: 560px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+
+.slide-showcase-card.orient-portrait .slide-media-col {
+  width: 100%;
+  max-height: 44vh;
+  flex-shrink: 0;
+}
+
+.slide-showcase-card.orient-portrait .slide-media-col img {
+  width: 100%;
+  max-height: 44vh;
+  object-fit: contain;
+}
+
+.slide-showcase-card.orient-portrait .slide-content-col {
+  padding: 24px 28px;
+  max-height: none;
+  overflow-y: visible;
+  flex: 1;
+}
+
+.slide-showcase-card.orient-portrait .slide-title {
+  font-size: 1.45rem;
+  margin-bottom: 10px;
+}
+
+.slide-showcase-card.orient-portrait .slide-text {
+  font-size: 1.02rem;
+  margin-bottom: 16px;
+}
