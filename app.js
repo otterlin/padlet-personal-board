@@ -82,6 +82,16 @@ const state = {
     requireApproval: false,
     allowComments: true,
     announcement: ''
+  },
+  slideshow: {
+    active: false,
+    list: [],
+    index: 0,
+    autoPlay: true,
+    intervalMs: 5000,
+    timerId: null,
+    progressTimerId: null,
+    elapsedMs: 0
   }
 };
 
@@ -141,6 +151,21 @@ const els = {
   closeLightboxBtn: document.getElementById('closeLightboxBtn'),
   lightboxImg: document.getElementById('lightboxImg'),
   lightboxCaption: document.getElementById('lightboxCaption'),
+  // 播放模式 (Slideshow)
+  playModeBtn: document.getElementById('playModeBtn'),
+  slideshowModal: document.getElementById('slideshowModal'),
+  slideshowTimerBar: document.getElementById('slideshowTimerBar'),
+  slideCounterBadge: document.getElementById('slideCounterBadge'),
+  slideBoardName: document.getElementById('slideBoardName'),
+  slideAutoPlayBtn: document.getElementById('slideAutoPlayBtn'),
+  slideAutoPlayText: document.getElementById('slideAutoPlayText'),
+  slideIntervalSelect: document.getElementById('slideIntervalSelect'),
+  slideFullscreenBtn: document.getElementById('slideFullscreenBtn'),
+  closeSlideshowBtn: document.getElementById('closeSlideshowBtn'),
+  slidePrevBtn: document.getElementById('slidePrevBtn'),
+  slideNextBtn: document.getElementById('slideNextBtn'),
+  slideCardContainer: document.getElementById('slideCardContainer'),
+  slideDotsContainer: document.getElementById('slideDotsContainer'),
   toastContainer: document.getElementById('toastContainer')
 };
 
@@ -379,6 +404,9 @@ function createCardElement(post) {
     </div>
     <div class="card-badges">
       <span class="category-pill">${escapeHtml(post.category || '一般')}</span>
+      <button class="pin-btn play-from-here-btn" title="從此貼文開始簡報播放">
+        ▶️
+      </button>
       <button class="pin-btn ${post.pinned ? 'pinned' : ''}" title="${post.pinned ? '取消置頂' : '置頂貼文'}">
         📌
       </button>
@@ -386,8 +414,9 @@ function createCardElement(post) {
     </div>
   `;
 
-  // 綁定置頂與刪除事件
-  topBar.querySelector('.pin-btn').addEventListener('click', () => handleTogglePin(post.id));
+  // 綁定單卡播放、置頂與刪除事件
+  topBar.querySelector('.play-from-here-btn').addEventListener('click', () => openSlideshow(post.id));
+  topBar.querySelectorAll('.pin-btn')[1].addEventListener('click', () => handleTogglePin(post.id));
   topBar.querySelector('.delete-btn').addEventListener('click', () => handleDeletePost(post.id));
   article.appendChild(topBar);
 
@@ -813,6 +842,237 @@ function openLightbox(imgUrl, caption) {
 }
 
 /**
+ * 全螢幕簡報播放模式 (Padlet Slideshow Mode)
+ */
+function getVisibleFilteredPosts() {
+  const visiblePosts = state.posts.filter(p => !p.status || p.status === 'approved');
+  const sorted = [...visiblePosts].sort((a, b) => {
+    if (Boolean(a.pinned) !== Boolean(b.pinned)) return a.pinned ? -1 : 1;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+  const query = state.searchQuery.trim().toLowerCase();
+  return sorted.filter(post => {
+    const matchCat = state.currentCategory === 'all' || post.category === state.currentCategory;
+    if (!matchCat) return false;
+    if (!query) return true;
+    const haystack = [post.title, post.content, post.author, post.category, post.linkTitle, post.linkUrl]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(query);
+  });
+}
+
+function openSlideshow(startPostId = null) {
+  const list = getVisibleFilteredPosts();
+  if (list.length === 0) {
+    showToast('⚠️ 目前沒有可播放的貼文');
+    return;
+  }
+
+  state.slideshow.list = list;
+  let startIdx = 0;
+  if (startPostId) {
+    const foundIdx = list.findIndex(p => p.id === startPostId);
+    if (foundIdx !== -1) startIdx = foundIdx;
+  }
+  state.slideshow.index = startIdx;
+  state.slideshow.active = true;
+  state.slideshow.autoPlay = true;
+  state.slideshow.intervalMs = Number(els.slideIntervalSelect.value || 5000);
+
+  els.slideBoardName.textContent = els.boardTitle.textContent.trim() || '我的個人靈感塗鴉牆';
+  els.slideshowModal.classList.remove('hidden');
+  updateAutoPlayButtonUI();
+  renderCurrentSlide();
+  startSlideshowTimer();
+}
+
+function closeSlideshow() {
+  state.slideshow.active = false;
+  stopSlideshowTimer();
+  els.slideshowModal.classList.add('hidden');
+  if (document.fullscreenElement) {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+function renderCurrentSlide() {
+  const { list, index } = state.slideshow;
+  if (!list.length) return;
+  const post = list[index];
+
+  els.slideCounterBadge.textContent = `${index + 1} / ${list.length}`;
+
+  // 渲染底部圓點
+  els.slideDotsContainer.innerHTML = '';
+  list.forEach((_, idx) => {
+    const dot = document.createElement('button');
+    dot.className = `slide-dot ${idx === index ? 'active' : ''}`;
+    dot.title = `跳至第 ${idx + 1} 則`;
+    dot.addEventListener('click', () => {
+      state.slideshow.index = idx;
+      renderCurrentSlide();
+      resetSlideshowTimer();
+    });
+    els.slideDotsContainer.appendChild(dot);
+  });
+
+  const authorName = post.author || '匿名訪客';
+  const avatarChar = authorName.trim().charAt(0).toUpperCase();
+  const formattedTime = formatRelativeTime(post.createdAt);
+  const hasImage = Boolean(post.imageUrl);
+  const comments = Array.isArray(post.comments) ? post.comments : [];
+
+  let linkHtml = '';
+  if (post.linkUrl) {
+    const safeUrl = normalizeUrl(post.linkUrl);
+    let domain = safeUrl;
+    try {
+      domain = new URL(safeUrl).hostname;
+    } catch (e) {}
+    linkHtml = `
+      <a class="card-link-box" href="${escapeHtml(safeUrl)}" target="_blank" rel="noopener noreferrer" style="margin-bottom: 18px;">
+        <div class="link-icon-badge">🔗</div>
+        <div class="link-details">
+          <div class="link-title">${escapeHtml(post.linkTitle || domain)}</div>
+          <div class="link-domain">${escapeHtml(safeUrl)}</div>
+        </div>
+        <span>↗</span>
+      </a>
+    `;
+  }
+
+  let commentsHtml = '';
+  if (comments.length > 0) {
+    const latestComments = comments.slice(-3);
+    commentsHtml = `
+      <div class="slide-comments-preview">
+        ${latestComments
+          .map(
+            c =>
+              `<div class="slide-comment-bubble"><strong>${escapeHtml(c.author || '訪客')}:</strong> ${escapeHtml(c.text)}</div>`
+          )
+          .join('')}
+      </div>
+    `;
+  }
+
+  els.slideCardContainer.innerHTML = `
+    <div class="slide-showcase-card color-${escapeHtml(post.color || 'white')} ${hasImage ? '' : 'no-image'}">
+      ${
+        hasImage
+          ? `<div class="slide-media-col">
+               <img src="${escapeHtml(post.imageUrl)}" alt="${escapeHtml(post.title)}" />
+             </div>`
+          : ''
+      }
+      <div class="slide-content-col">
+        <div>
+          <div class="slide-header-meta">
+            <div class="slide-author-box">
+              <div class="slide-avatar">${escapeHtml(avatarChar)}</div>
+              <div>
+                <div class="slide-author-name">${escapeHtml(authorName)}</div>
+                <div class="slide-time">${escapeHtml(formattedTime)}</div>
+              </div>
+            </div>
+            <span class="slide-category-badge">${post.pinned ? '📌 ' : ''}${escapeHtml(post.category || '一般')}</span>
+          </div>
+
+          <h2 class="slide-title">${escapeHtml(post.title || '')}</h2>
+          ${post.content ? `<div class="slide-text">${escapeHtml(post.content)}</div>` : ''}
+          ${linkHtml}
+        </div>
+
+        <div>
+          <div class="slide-footer-stats">
+            <div class="slide-stat-pills">
+              <span>❤️ ${Number(post.likes || 0)} 個愛心</span>
+              <span>💬 ${comments.length} 則留言</span>
+            </div>
+          </div>
+          ${commentsHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function nextSlide() {
+  if (!state.slideshow.list.length) return;
+  state.slideshow.index = (state.slideshow.index + 1) % state.slideshow.list.length;
+  renderCurrentSlide();
+  resetSlideshowTimer();
+}
+
+function prevSlide() {
+  if (!state.slideshow.list.length) return;
+  state.slideshow.index = (state.slideshow.index - 1 + state.slideshow.list.length) % state.slideshow.list.length;
+  renderCurrentSlide();
+  resetSlideshowTimer();
+}
+
+function startSlideshowTimer() {
+  stopSlideshowTimer();
+  if (!state.slideshow.autoPlay) {
+    els.slideshowTimerBar.style.width = '0%';
+    return;
+  }
+  state.slideshow.elapsedMs = 0;
+  const stepMs = 100;
+  state.slideshow.progressTimerId = setInterval(() => {
+    state.slideshow.elapsedMs += stepMs;
+    const pct = Math.min(100, (state.slideshow.elapsedMs / state.slideshow.intervalMs) * 100);
+    els.slideshowTimerBar.style.width = `${pct}%`;
+    if (state.slideshow.elapsedMs >= state.slideshow.intervalMs) {
+      nextSlide();
+    }
+  }, stepMs);
+}
+
+function stopSlideshowTimer() {
+  if (state.slideshow.progressTimerId) {
+    clearInterval(state.slideshow.progressTimerId);
+    state.slideshow.progressTimerId = null;
+  }
+}
+
+function resetSlideshowTimer() {
+  if (state.slideshow.autoPlay) {
+    startSlideshowTimer();
+  }
+}
+
+function toggleSlideshowAutoPlay() {
+  state.slideshow.autoPlay = !state.slideshow.autoPlay;
+  updateAutoPlayButtonUI();
+  if (state.slideshow.autoPlay) {
+    startSlideshowTimer();
+  } else {
+    stopSlideshowTimer();
+  }
+}
+
+function updateAutoPlayButtonUI() {
+  if (state.slideshow.autoPlay) {
+    els.slideAutoPlayBtn.innerHTML = '⏸️ <span>自動輪播中</span>';
+    els.slideAutoPlayBtn.classList.add('active-autoplay');
+  } else {
+    els.slideAutoPlayBtn.innerHTML = '▶️ <span>已暫停輪播</span>';
+    els.slideAutoPlayBtn.classList.remove('active-autoplay');
+  }
+}
+
+function toggleSlideshowFullscreen() {
+  if (!document.fullscreenElement) {
+    els.slideshowModal.requestFullscreen().catch(() => {});
+  } else {
+    document.exitFullscreen().catch(() => {});
+  }
+}
+
+/**
  * 事件綁定
  */
 function bindEvents() {
@@ -958,6 +1218,18 @@ function bindEvents() {
     fetchPosts();
   });
 
+  // 播放模式事件綁定
+  els.playModeBtn.addEventListener('click', () => openSlideshow());
+  els.closeSlideshowBtn.addEventListener('click', closeSlideshow);
+  els.slideNextBtn.addEventListener('click', nextSlide);
+  els.slidePrevBtn.addEventListener('click', prevSlide);
+  els.slideAutoPlayBtn.addEventListener('click', toggleSlideshowAutoPlay);
+  els.slideFullscreenBtn.addEventListener('click', toggleSlideshowFullscreen);
+  els.slideIntervalSelect.addEventListener('change', e => {
+    state.slideshow.intervalMs = Number(e.target.value || 5000);
+    resetSlideshowTimer();
+  });
+
   // 關閉燈箱與快捷鍵
   els.closeLightboxBtn.addEventListener('click', () => els.lightboxModal.classList.add('hidden'));
   els.lightboxModal.addEventListener('click', e => {
@@ -965,6 +1237,33 @@ function bindEvents() {
   });
 
   window.addEventListener('keydown', e => {
+    if (state.slideshow.active) {
+      if (e.key === 'Escape') {
+        closeSlideshow();
+        return;
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextSlide();
+        return;
+      }
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+        return;
+      }
+      if (e.key === ' ') {
+        e.preventDefault();
+        toggleSlideshowAutoPlay();
+        return;
+      }
+      if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        toggleSlideshowFullscreen();
+        return;
+      }
+    }
+
     if (e.key === 'Escape') {
       els.postModal.classList.add('hidden');
       els.lightboxModal.classList.add('hidden');
