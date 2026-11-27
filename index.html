@@ -37,6 +37,9 @@
         <button class="bg-dot" data-bg="bg-grid" title="極簡方格"></button>
       </div>
 
+      <button class="btn btn-icon" id="playModeBtn" title="進入全螢幕簡報播放模式">
+        ▶️ <span>播放模式</span>
+      </button>
       <button class="btn btn-icon" id="refreshBtn" title="重新整理同步資料">
         🔄 <span>同步</span>
       </button>
@@ -207,6 +210,57 @@
     <button class="lightbox-close" id="closeLightboxBtn" aria-label="關閉預覽">&times;</button>
     <img id="lightboxImg" src="" alt="放大預覽" />
     <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+
+  <!-- 全螢幕簡報播放模式 (Padlet Slideshow Mode) -->
+  <div class="slideshow-overlay hidden" id="slideshowModal">
+    <!-- 頂部自動輪播進度條 -->
+    <div class="slideshow-timer-track">
+      <div class="slideshow-timer-bar" id="slideshowTimerBar"></div>
+    </div>
+
+    <!-- 播放模式頂部控制列 -->
+    <header class="slideshow-topbar">
+      <div class="slideshow-meta">
+        <span class="slide-badge" id="slideCounterBadge">1 / 1</span>
+        <span class="slide-board-name" id="slideBoardName">我的個人靈感塗鴉牆</span>
+      </div>
+
+      <div class="slideshow-controls">
+        <button type="button" class="slide-ctrl-btn" id="slideAutoPlayBtn" title="自動輪播開關 (空白鍵)">
+          ⏸️ <span id="slideAutoPlayText">自動輪播中</span>
+        </button>
+        <select id="slideIntervalSelect" class="slide-interval-select" title="輪播秒數間隔">
+          <option value="3000">每 3 秒</option>
+          <option value="5000" selected>每 5 秒</option>
+          <option value="8000">每 8 秒</option>
+          <option value="12000">每 12 秒</option>
+        </select>
+        <button type="button" class="slide-ctrl-btn" id="slideFullscreenBtn" title="切換全螢幕 (F)">
+          ⛶ <span>全螢幕</span>
+        </button>
+        <button type="button" class="slide-ctrl-btn slide-close-btn" id="closeSlideshowBtn" title="結束播放模式 (Esc)">
+          ✕ <span>結束播放</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- 投影片主舞台 -->
+    <div class="slideshow-stage">
+      <button type="button" class="slide-nav-arrow prev" id="slidePrevBtn" title="上一則 (←)">‹</button>
+
+      <div class="slide-card-container" id="slideCardContainer">
+        <!-- 由 app.js 動態渲染當前貼文投影片 -->
+      </div>
+
+      <button type="button" class="slide-nav-arrow next" id="slideNextBtn" title="下一則 (→)">›</button>
+    </div>
+
+    <!-- 底部圓點指示器 -->
+    <footer class="slideshow-footer">
+      <div class="slide-dots" id="slideDotsContainer"></div>
+      <div class="slide-key-hints">快捷鍵：<kbd>←</kbd> <kbd>→</kbd> 切換貼文 · <kbd>空白鍵</kbd> 暫停/播放 · <kbd>F</kbd> 全螢幕 · <kbd>Esc</kbd> 離開</div>
+    </footer>
   </div>
 
   <!-- 頂部通知 Toast -->
