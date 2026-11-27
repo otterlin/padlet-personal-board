@@ -20,16 +20,16 @@ const DEFAULT_DEMO_POSTS = [
     id: 'demo_1',
     author: '板主 小創',
     title: '🎉 歡迎來到我的個人靈感塗鴉牆！',
-    content: '這是一個以 Google Sheet 當資料庫的 Padlet 風格塗鴉牆。\n\n你可以：\n1️⃣ 點擊右下角「＋」或雙擊空白處新增便利貼\n2️⃣ 上傳圖片（或直接 Ctrl+V 貼上截圖）\n3️⃣ 附上外部網站連結\n4️⃣ 對貼文按愛心或展開留言互動！',
+    content: '這是一個數位互動塗鴉牆。\n\n你可以：\n1️⃣ 點擊右下角「＋」或雙擊空白處新增便利貼\n2️⃣ 上傳圖片（或直接 Ctrl+V 貼上截圖）\n3️⃣ 附上外部網站連結\n4️⃣ 對貼文按愛心或展開留言互動！',
     imageUrl: 'https://images.unsplash.com/photo-1513542789411-b6a5d4f31634?auto=format&fit=crop&w=900&q=80',
-    linkUrl: 'https://sheets.new',
-    linkTitle: '前往建立 Google 試算表資料庫',
+    linkUrl: '',
+    linkTitle: '',
     color: 'yellow',
     category: '靈感筆記',
     likes: 12,
     pinned: true,
     comments: [
-      { id: 'c1', author: '訪客阿凱', text: '介面超像 Padlet！而且可以用 Google Sheet 存資料太方便了～', createdAt: new Date().toISOString() }
+      { id: 'c1', author: '訪客阿凱', text: '介面超像 Padlet！分享作品很方便～', createdAt: new Date().toISOString() }
     ],
     createdAt: new Date(Date.now() - 3600 * 1000 * 5).toISOString()
   },
@@ -149,7 +149,6 @@ const els = {
  */
 function init() {
   loadBoardMeta();
-  updateDbBadge();
   bindEvents();
   fetchPosts();
 }
@@ -171,7 +170,10 @@ function loadBoardMeta() {
 function applyBoardSettings(meta) {
   if (!meta) return;
   const title = meta.boardTitle || meta.title;
-  const subtitle = meta.boardSubtitle !== undefined ? meta.boardSubtitle : meta.subtitle;
+  let subtitle = meta.boardSubtitle !== undefined ? meta.boardSubtitle : meta.subtitle;
+  if (subtitle === '隨時記錄靈感、分享圖片與好站連結 — 支援 Google Sheet 雲端同步') {
+    subtitle = '隨時記錄靈感、分享圖片與好站連結';
+  }
   const bg = meta.boardBg || meta.bg;
 
   if (title) els.boardTitle.textContent = title;
@@ -281,7 +283,7 @@ async function fetchPosts() {
     }
   } catch (err) {
     console.error('讀取失敗:', err);
-    showToast('⚠️ 無法從 Google Sheet 讀取，暫時顯示本機快取資料');
+    showToast('⚠️ 暫時無法連線至雲端，顯示本機快取資料');
     const saved = localStorage.getItem(STORAGE_KEYS.LOCAL_POSTS);
     state.posts = saved ? JSON.parse(saved) : [...DEFAULT_DEMO_POSTS];
   } finally {
@@ -571,10 +573,10 @@ async function handleCreatePost(e) {
         showToast(
           res.post.status === 'pending'
             ? '⏳ 貼文已送出，待管理員於後臺審核通過後即會公開顯示！'
-            : '✅ 已發布並同步至 Google Sheet！'
+            : '✅ 貼文已成功發布！'
         );
       } else {
-        throw new Error((res && res.message) || '寫入 Google Sheet 失敗');
+        throw new Error((res && res.message) || '寫入雲端失敗');
       }
     } else {
       state.posts.unshift(newPost);
@@ -916,86 +918,6 @@ function bindEvents() {
     fetchPosts();
   });
 
-  // Google Sheet 設定視窗
-  const openSettings = () => {
-    els.gasUrlInput.value = state.gasUrl;
-    els.testResultMsg.textContent = '';
-    els.settingsModal.classList.remove('hidden');
-  };
-  els.settingsBtn.addEventListener('click', openSettings);
-  els.dbStatusBadge.addEventListener('click', openSettings);
-  els.closeSettingsModal.addEventListener('click', () => els.settingsModal.classList.add('hidden'));
-
-  // 儲存 Google Sheet Web App URL
-  els.saveSettingsBtn.addEventListener('click', () => {
-    const url = els.gasUrlInput.value.trim();
-    state.gasUrl = url;
-    localStorage.setItem(STORAGE_KEYS.GAS_URL, url);
-    updateDbBadge();
-    els.settingsModal.classList.add('hidden');
-    showToast(url ? '✅ 已儲存 Google Sheet 連線設定，正在同步...' : '已切換為本機儲存模式');
-    fetchPosts();
-  });
-
-  els.clearGasUrlBtn.addEventListener('click', () => {
-    els.gasUrlInput.value = '';
-    state.gasUrl = '';
-    localStorage.removeItem(STORAGE_KEYS.GAS_URL);
-    updateDbBadge();
-    els.settingsModal.classList.add('hidden');
-    showToast('已切換回本機展示模式');
-    fetchPosts();
-  });
-
-  // 測試連線
-  els.testConnectionBtn.addEventListener('click', async () => {
-    const url = els.gasUrlInput.value.trim();
-    if (!url) {
-      els.testResultMsg.style.color = '#e11d48';
-      els.testResultMsg.textContent = '請先輸入 Web App URL';
-      return;
-    }
-    els.testResultMsg.style.color = '#475569';
-    els.testResultMsg.textContent = '⏳ 測試連線中...';
-    try {
-      const res = await fetch(url + (url.includes('?') ? '&' : '?') + '_t=' + Date.now());
-      const data = await res.json();
-      if (data && data.status === 'ok') {
-        els.testResultMsg.style.color = '#16a34a';
-        els.testResultMsg.textContent = `✅ 連線成功！目前共有 ${data.posts.length} 則雲端貼文`;
-      } else {
-        throw new Error((data && data.message) || '回應格式異常');
-      }
-    } catch (err) {
-      els.testResultMsg.style.color = '#e11d48';
-      els.testResultMsg.textContent = '❌ 連線失敗，請確認部署權限已設為「所有人 (Anyone)」';
-    }
-  });
-
-  // 匯出 JSON 備份
-  els.exportJsonBtn.addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(state.posts, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `padlet_backup_${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    showToast('📥 已匯出塗鴉牆 JSON 備份');
-  });
-
-  // 一鍵複製 Google Apps Script 程式碼
-  els.copyGasCodeBtn.addEventListener('click', async () => {
-    try {
-      const res = await fetch('google-apps-script.gs');
-      const codeText = await res.text();
-      await navigator.clipboard.writeText(codeText);
-      showToast('📋 已複製 google-apps-script.gs 程式碼！');
-    } catch (err) {
-      showToast('請直接打開專案資料夾內的 google-apps-script.gs 複製');
-    }
-  });
-
   // 關閉燈箱與快捷鍵
   els.closeLightboxBtn.addEventListener('click', () => els.lightboxModal.classList.add('hidden'));
   els.lightboxModal.addEventListener('click', e => {
@@ -1005,7 +927,6 @@ function bindEvents() {
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
       els.postModal.classList.add('hidden');
-      els.settingsModal.classList.add('hidden');
       els.lightboxModal.classList.add('hidden');
     }
   });
