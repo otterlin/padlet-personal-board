@@ -70,8 +70,11 @@
     </div>
     <div class="layout-controls">
       <span class="hint-text">💡 提示：雙擊牆面空白處可快速發文</span>
-      <button class="layout-btn active" data-layout="masonry" title="瀑布流網格">⊞ 網格</button>
-      <button class="layout-btn" data-layout="stream" title="單欄動態流">☰ 列表</button>
+      <div class="orientation-group" title="選擇卡片排列方向：直式或橫式">
+        <button class="layout-btn active" data-layout="portrait" title="直式瀑布流卡片">▯ 直式</button>
+        <button class="layout-btn" data-layout="landscape" title="橫式圖文並排卡片">▭ 橫式</button>
+        <button class="layout-btn" data-layout="stream" title="單欄動態流">☰ 單欄</button>
+      </div>
     </div>
   </section>
 
@@ -227,6 +230,14 @@
       </div>
 
       <div class="slideshow-controls">
+        <div class="slide-orient-group" title="切換播放模式版面方向">
+          <button type="button" class="slide-ctrl-btn active-orient" id="slideOrientLandscapeBtn" data-orient="landscape" title="橫式並排 (左圖右文)">
+            ▭ <span>橫式</span>
+          </button>
+          <button type="button" class="slide-ctrl-btn" id="slideOrientPortraitBtn" data-orient="portrait" title="直式卡片 (上圖下文)">
+            ▯ <span>直式</span>
+          </button>
+        </div>
         <button type="button" class="slide-ctrl-btn" id="slideAutoPlayBtn" title="自動輪播開關 (空白鍵)">
           ⏸️ <span id="slideAutoPlayText">自動輪播中</span>
         </button>
