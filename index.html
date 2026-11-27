@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>個人靈感塗鴉牆 | Padlet Personal Board</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body class="bg-cork">
+  <!-- 頂部導覽列 -->
+  <header class="board-header">
+    <div class="header-left">
+      <div class="board-avatar" id="boardAvatar">🎨</div>
+      <div class="board-title-group">
+        <div class="board-title-row">
+          <h1 id="boardTitle" contenteditable="true" spellcheck="false" title="點擊可直接修改牆面標題">我的個人靈感塗鴉牆</h1>
+          <span class="db-badge" id="dbStatusBadge" title="點擊設定 Google Sheet 資料庫">
+            <span class="status-dot"></span>
+            <span id="dbStatusText">本機展示模式</span>
+          </span>
+        </div>
+        <p id="boardSubtitle" contenteditable="true" spellcheck="false" title="點擊可直接修改副標題">隨時記錄靈感、分享圖片與好站連結 — 支援 Google Sheet 雲端同步</p>
+      </div>
+    </div>
+
+    <div class="header-actions">
+      <!-- 搜尋框 -->
+      <div class="search-box">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="搜尋標題、內容、作者..." />
+      </div>
+
+      <!-- 主題背景切換 -->
+      <div class="bg-switcher" title="切換塗鴉牆背景">
+        <button class="bg-dot active" data-bg="bg-cork" title="經典軟木塞"></button>
+        <button class="bg-dot" data-bg="bg-dark" title="星空深色"></button>
+        <button class="bg-dot" data-bg="bg-pastel" title="晨曦漸層"></button>
+        <button class="bg-dot" data-bg="bg-grid" title="極簡方格"></button>
+      </div>
+
+      <button class="btn btn-icon" id="refreshBtn" title="重新整理同步資料">
+        🔄 <span>同步</span>
+      </button>
+      <button class="btn btn-secondary" id="settingsBtn">
+        ⚙️ <span>Google Sheet 設定</span>
+      </button>
+      <button class="btn btn-primary" id="newPostTopBtn">
+        ＋ <span>新增貼文</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- 分類篩選與統計列 -->
+  <section class="filter-bar">
+    <div class="category-tabs" id="categoryTabs">
+      <button class="cat-tab active" data-category="all">全部 (<span id="countAll">0</span>)</button>
+      <button class="cat-tab" data-category="靈感筆記">💡 靈感筆記</button>
+      <button class="cat-tab" data-category="作品分享">🖼️ 作品分享</button>
+      <button class="cat-tab" data-category="好站連結">🔗 好站連結</button>
+      <button class="cat-tab" data-category="待辦事項">📌 待辦事項</button>
+      <button class="cat-tab" data-category="心情隨筆">💬 心情隨筆</button>
+    </div>
+    <div class="layout-controls">
+      <span class="hint-text">💡 提示：雙擊牆面空白處可快速發文</span>
+      <button class="layout-btn active" data-layout="masonry" title="瀑布流網格">⊞ 網格</button>
+      <button class="layout-btn" data-layout="stream" title="單欄動態流">☰ 列表</button>
+    </div>
+  </section>
+
+  <!-- 載入中提示 -->
+  <div class="loading-bar hidden" id="loadingBar">
+    <div class="loading-progress"></div>
+  </div>
+
+  <!-- 塗鴉牆主畫布 -->
+  <main class="board-canvas" id="boardCanvas">
+    <div class="masonry-grid" id="postsContainer">
+      <!-- 由 JS 動態渲染卡片 -->
+    </div>
+
+    <!-- 空狀態 -->
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-icon">📌</div>
+      <h3>塗鴉牆目前還沒有這類貼文</h3>
+      <p>點擊右下角的「＋」按鈕，或雙擊畫面空白處，貼上你的第一則留言、圖片或連結吧！</p>
+      <button class="btn btn-primary" id="emptyAddBtn">＋ 立即新增貼文</button>
+    </div>
+  </main>
+
+  <!-- 右下角懸浮新增按鈕 (Padlet 經典 FAB) -->
+  <button class="fab-add" id="fabAddBtn" title="新增貼文 (快捷鍵 N 或雙擊牆面)">
+    <span class="fab-plus">＋</span>
+  </button>
+
+  <!-- 新增/編輯貼文 Modal -->
+  <div class="modal-overlay hidden" id="postModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2>✨ 張貼到塗鴉牆</h2>
+        <button class="modal-close" id="closePostModal" aria-label="關閉">&times;</button>
+      </div>
+      <form id="postForm" class="modal-body">
+        <div class="form-row two-cols">
+          <div class="form-group">
+            <label for="postAuthor">👤 你的暱稱</label>
+            <input type="text" id="postAuthor" placeholder="例如：小明 (留空為匿名訪客)" maxlength="30" />
+          </div>
+          <div class="form-group">
+            <label for="postCategory">🏷️ 分類標籤</label>
+            <select id="postCategory">
+              <option value="靈感筆記">💡 靈感筆記</option>
+              <option value="作品分享">🖼️ 作品分享</option>
+              <option value="好站連結">🔗 好站連結</option>
+              <option value="待辦事項">📌 待辦事項</option>
+              <option value="心情隨筆">💬 心情隨筆</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="postTitle">📝 標題 <span class="required">*</span></label>
+          <input type="text" id="postTitle" placeholder="輸入醒目的標題..." required maxlength="80" />
+        </div>
+
+        <div class="form-group">
+          <label for="postContent">💬 留言內容</label>
+          <textarea id="postContent" rows="4" placeholder="寫下你的想法、筆記或說明..."></textarea>
+        </div>
+
+        <!-- 圖片上傳區塊 (支援檔案上傳、拖曳、剪貼簿貼上或圖片網址) -->
+        <div class="form-group">
+          <label>🖼️ 附加圖片 <span class="sub-label">(支援上傳照片、Ctrl+V 貼上截圖，或輸入圖片網址)</span></label>
+          <div class="media-tabs">
+            <button type="button" class="media-tab active" data-tab="upload">📁 上傳圖片檔案</button>
+            <button type="button" class="media-tab" data-tab="url">🌐 貼上圖片網址</button>
+          </div>
+
+          <div class="media-panel" id="uploadPanel">
+            <div class="drop-zone" id="dropZone">
+              <input type="file" id="imageFileInput" accept="image/*" hidden />
+              <div class="drop-zone-content" id="dropZonePrompt">
+                <span class="drop-icon">📷</span>
+                <p>點擊選擇圖片、拖曳圖片至此，或直接按 <kbd>Ctrl</kbd>+<kbd>V</kbd> 貼上截圖</p>
+                <span class="drop-hint">系統會自動壓縮優化並上傳至 Google Drive / 資料庫</span>
+              </div>
+              <div class="image-preview-wrap hidden" id="imagePreviewWrap">
+                <img id="imagePreview" src="" alt="圖片預覽" />
+                <button type="button" class="remove-img-btn" id="removeImgBtn" title="移除圖片">&times;</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="media-panel hidden" id="urlPanel">
+            <input type="url" id="postImageUrl" placeholder="https://example.com/photo.jpg" />
+          </div>
+        </div>
+
+        <!-- 附加外部連結區塊 -->
+        <div class="form-group">
+          <label>🔗 附加連結 <span class="sub-label">(選填，會在卡片上顯示可點擊的連結卡片)</span></label>
+          <div class="form-row two-cols">
+            <input type="url" id="postLinkUrl" placeholder="https://example.com" />
+            <input type="text" id="postLinkTitle" placeholder="連結顯示名稱 (選填，例如：參考文章)" maxlength="50" />
+          </div>
+        </div>
+
+        <!-- 卡片底色與置頂 -->
+        <div class="form-row two-cols align-center">
+          <div class="form-group">
+            <label>🎨 便利貼顏色</label>
+            <div class="color-picker" id="colorPicker">
+              <button type="button" class="color-swatch swatch-white active" data-color="white" title="純淨白"></button>
+              <button type="button" class="color-swatch swatch-yellow" data-color="yellow" title="暖陽黃"></button>
+              <button type="button" class="color-swatch swatch-pink" data-color="pink" title="櫻花粉"></button>
+              <button type="button" class="color-swatch swatch-blue" data-color="blue" title="晴空藍"></button>
+              <button type="button" class="color-swatch swatch-green" data-color="green" title="薄荷綠"></button>
+              <button type="button" class="color-swatch swatch-purple" data-color="purple" title="薰衣草紫"></button>
+            </div>
+          </div>
+          <div class="form-group pin-checkbox-group">
+            <label class="checkbox-label">
+              <input type="checkbox" id="postPinned" />
+              <span>📌 置頂這則貼文</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="cancelPostBtn">取消</button>
+          <button type="submit" class="btn btn-primary" id="submitPostBtn">🚀 發布貼文</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Google Sheet 資料庫設定 Modal -->
+  <div class="modal-overlay hidden" id="settingsModal">
+    <div class="modal-card modal-lg">
+      <div class="modal-header">
+        <h2>⚙️ Google Sheet 資料庫連線設定</h2>
+        <button class="modal-close" id="closeSettingsModal" aria-label="關閉">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label for="gasUrlInput">🔗 Google Apps Script 網頁應用程式網址 (Web App URL)</label>
+          <input
+            type="url"
+            id="gasUrlInput"
+            placeholder="https://script.google.com/macros/s/AKfycb.../exec"
+          />
+          <p class="field-help">
+            貼上部署後的 <code>https://script.google.com/macros/s/.../exec</code> 網址後，所有的貼文、留言、按讚與圖片都會即時同步到你的 Google Sheet 與 Google Drive！若留空則使用瀏覽器本機儲存 (LocalStorage)。
+          </p>
+        </div>
+
+        <div class="connection-test-row">
+          <button type="button" class="btn btn-secondary" id="testConnectionBtn">🔌 測試連線</button>
+          <button type="button" class="btn btn-ghost" id="exportJsonBtn">📥 匯出目前資料 (JSON)</button>
+          <span id="testResultMsg" class="test-result-msg"></span>
+        </div>
+
+        <hr class="divider" />
+
+        <div class="setup-guide">
+          <h3>📖 3 分鐘快速串接 Google Sheet 教學</h3>
+          <ol class="guide-steps">
+            <li>
+              前往 <a href="https://sheets.new" target="_blank" rel="noopener">sheets.new</a> 建立一個全新的 Google 試算表。
+            </li>
+            <li>
+              點選試算表上方選單的 <strong>「擴充功能」&rarr;「Apps Script」</strong>。
+            </li>
+            <li>
+              打開本專案資料夾中的 <code>google-apps-script.gs</code>（或點擊下方按鈕複製程式碼），全部貼上並取代編輯器內的程式碼，按 <kbd>Ctrl</kbd>+<kbd>S</kbd> 儲存。
+              <div class="copy-code-bar">
+                <button type="button" class="btn btn-sm btn-secondary" id="copyGasCodeBtn">📋 一鍵複製 Apps Script 後端程式碼</button>
+              </div>
+            </li>
+            <li>
+              點選右上角 <strong>「部署」&rarr;「新增部署作業」</strong>：
+              <ul>
+                <li>選取類型：<strong>「網頁應用程式 (Web App)」</strong></li>
+                <li>執行身分：<strong>「我 (Me)」</strong></li>
+                <li>誰可以存取：<strong>「所有人 (Anyone)」</strong></li>
+              </ul>
+            </li>
+            <li>
+              點擊「部署」並完成 Google 權限核准後，複製產生的 <strong>網頁應用程式網址</strong>，貼到上方輸入框並按「儲存設定」即可！
+            </li>
+          </ol>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-ghost" id="clearGasUrlBtn">切換回本機模式</button>
+          <button type="button" class="btn btn-primary" id="saveSettingsBtn">💾 儲存並連線</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 圖片燈箱放大檢視 Modal -->
+  <div class="lightbox-overlay hidden" id="lightboxModal">
+    <button class="lightbox-close" id="closeLightboxBtn" aria-label="關閉預覽">&times;</button>
+    <img id="lightboxImg" src="" alt="放大預覽" />
+    <div class="lightbox-caption" id="lightboxCaption"></div>
+  </div>
+
+  <!-- 頂部通知 Toast -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
