@@ -1839,3 +1839,393 @@ code {
   margin-bottom: 12px;
   line-height: 1.5;
 }
+
+
+/* ==========================================
+   全螢幕簡報播放模式 (Padlet Slideshow Mode)
+   ========================================== */
+
+#playModeBtn {
+  background: linear-gradient(135deg, #0f172a, #1e293b);
+  color: #fff;
+  border-color: #0f172a;
+}
+
+#playModeBtn:hover {
+  background: linear-gradient(135deg, #1e293b, #334155);
+  transform: translateY(-1px);
+}
+
+.slideshow-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: radial-gradient(circle at 20% 20%, #1e293b 0%, #0f172a 65%, #020617 100%);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow: hidden;
+  user-select: none;
+}
+
+.slideshow-timer-track {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.12);
+  z-index: 210;
+}
+
+.slideshow-timer-bar {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #fb7185, #e11d48);
+  transition: width 0.1s linear;
+}
+
+.slideshow-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 18px 32px;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.slideshow-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.slide-badge {
+  background: var(--primary);
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.88rem;
+  padding: 5px 14px;
+  border-radius: 999px;
+}
+
+.slide-board-name {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #e2e8f0;
+}
+
+.slideshow-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.slide-ctrl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 15px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+}
+
+.slide-ctrl-btn:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.slide-ctrl-btn.active-autoplay {
+  background: rgba(22, 163, 74, 0.35);
+  border-color: #4ade80;
+}
+
+.slide-close-btn {
+  background: rgba(225, 29, 72, 0.28);
+  border-color: rgba(251, 113, 133, 0.5);
+}
+
+.slide-close-btn:hover {
+  background: var(--primary);
+}
+
+.slide-interval-select {
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(15, 23, 42, 0.85);
+  color: #fff;
+  font-size: 0.84rem;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+}
+
+/* 投影片主舞台 */
+.slideshow-stage {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px 80px;
+  position: relative;
+  overflow: hidden;
+}
+
+.slide-nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  font-size: 2.2rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  z-index: 10;
+}
+
+.slide-nav-arrow:hover {
+  background: var(--primary);
+  border-color: var(--primary);
+  transform: translateY(-50%) scale(1.08);
+}
+
+.slide-nav-arrow.prev { left: 24px; }
+.slide-nav-arrow.next { right: 24px; }
+
+.slide-card-container {
+  width: 100%;
+  max-width: 1120px;
+  max-height: 75vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.slide-showcase-card {
+  width: 100%;
+  max-height: 75vh;
+  border-radius: 26px;
+  background: #ffffff;
+  color: #0f172a;
+  box-shadow: 0 30px 60px -15px rgba(0, 0, 0, 0.65);
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  overflow: hidden;
+  animation: slideFadeIn 0.35s ease-out;
+}
+
+.slide-showcase-card.no-image {
+  grid-template-columns: 1fr;
+  max-width: 780px;
+}
+
+@keyframes slideFadeIn {
+  from { opacity: 0; transform: translateY(14px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.slide-showcase-card.color-white { background: #ffffff; }
+.slide-showcase-card.color-yellow { background: #fef9c3; }
+.slide-showcase-card.color-pink { background: #fce7f3; }
+.slide-showcase-card.color-blue { background: #e0f2fe; }
+.slide-showcase-card.color-green { background: #dcfce7; }
+.slide-showcase-card.color-purple { background: #f3e8ff; }
+
+.slide-media-col {
+  background: #020617;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  max-height: 75vh;
+  overflow: hidden;
+}
+
+.slide-media-col img {
+  width: 100%;
+  height: 100%;
+  max-height: 75vh;
+  object-fit: contain;
+}
+
+.slide-content-col {
+  padding: 36px 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  overflow-y: auto;
+  max-height: 75vh;
+}
+
+.slide-header-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.slide-author-box {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.slide-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+
+.slide-author-name {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.slide-time {
+  font-size: 0.82rem;
+  color: #64748b;
+}
+
+.slide-category-badge {
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.08);
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
+.slide-title {
+  font-size: 1.85rem;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.35;
+  margin-bottom: 16px;
+  word-break: break-word;
+}
+
+.slide-text {
+  font-size: 1.15rem;
+  color: #334155;
+  line-height: 1.75;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-bottom: 22px;
+}
+
+.slide-footer-stats {
+  padding-top: 16px;
+  border-top: 1px solid rgba(15, 23, 42, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.slide-stat-pills {
+  display: flex;
+  gap: 12px;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.slide-comments-preview {
+  margin-top: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.slide-comment-bubble {
+  background: rgba(255, 255, 255, 0.72);
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 0.88rem;
+}
+
+/* 播放模式底部列 */
+.slideshow-footer {
+  padding: 14px 32px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.slide-dots {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: 80vw;
+}
+
+.slide-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.slide-dot.active {
+  width: 28px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.slide-key-hints {
+  font-size: 0.78rem;
+  color: #94a3b8;
+}
+
+.slide-key-hints kbd {
+  background: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: #f8fafc;
+}
+
+@media (max-width: 900px) {
+  .slideshow-stage { padding: 16px 20px; }
+  .slide-showcase-card {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+  .slide-media-col { max-height: 36vh; }
+  .slide-content-col { padding: 22px; }
+  .slide-title { font-size: 1.35rem; }
+  .slide-text { font-size: 1rem; }
+  .slide-nav-arrow { width: 42px; height: 42px; font-size: 1.6rem; }
+  .slide-nav-arrow.prev { left: 8px; }
+  .slide-nav-arrow.next { right: 8px; }
+}
