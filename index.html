@@ -44,14 +44,23 @@
       <button class="btn btn-icon" id="refreshBtn" title="重新整理同步資料">
         🔄 <span>同步</span>
       </button>
+      <a href="admin.html" class="btn btn-secondary" title="進入塗鴉牆後臺管理系統">
+        🛡️ <span>後臺管理</span>
+      </a>
       <button class="btn btn-secondary" id="settingsBtn">
-        ⚙️ <span>Google Sheet 設定</span>
+        ⚙️ <span>資料庫設定</span>
       </button>
       <button class="btn btn-primary" id="newPostTopBtn">
         ＋ <span>新增貼文</span>
       </button>
     </div>
   </header>
+
+  <!-- 頂部置頂公告橫幅 (可由後臺設定開啟/關閉) -->
+  <div class="announcement-banner hidden" id="announcementBanner">
+    <span class="ann-icon">📢</span>
+    <span id="announcementText"></span>
+  </div>
 
   <!-- 分類篩選與統計列 -->
   <section class="filter-bar">
