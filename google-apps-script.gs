@@ -67,7 +67,7 @@ function getOrCreateSettingsSheet() {
     const defaultSettings = [
       ['key', 'value'],
       ['boardTitle', '我的個人靈感塗鴉牆'],
-      ['boardSubtitle', '隨時記錄靈感、分享圖片與好站連結 — 支援 Google Sheet 雲端同步'],
+      ['boardSubtitle', '隨時記錄靈感、分享圖片與好站連結'],
       ['boardBg', 'bg-cork'],
       ['requireApproval', 'false'],
       ['allowPosting', 'true'],
@@ -87,7 +87,7 @@ function getBoardSettings() {
   const lastRow = sheet.getLastRow();
   const settings = {
     boardTitle: '我的個人靈感塗鴉牆',
-    boardSubtitle: '隨時記錄靈感、分享圖片與好站連結 — 支援 Google Sheet 雲端同步',
+    boardSubtitle: '隨時記錄靈感、分享圖片與好站連結',
     boardBg: 'bg-cork',
     requireApproval: false,
     allowPosting: true,
