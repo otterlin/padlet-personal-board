@@ -508,15 +508,10 @@ function createCardElement(post) {
 }
 
 /**
- * 新增貼文提交處理
+ * 新增貼文提交處理 (支援免審核直接發布、免填標題自動產生標題)
  */
 async function handleCreatePost(e) {
-  e.preventDefault();
-  const title = els.postTitle.value.trim();
-  if (!title) {
-    showToast('請輸入貼文標題');
-    return;
-  }
+  if (e && e.preventDefault) e.preventDefault();
 
   const author = els.postAuthor.value.trim() || '匿名訪客';
   localStorage.setItem(STORAGE_KEYS.LAST_AUTHOR, author);
@@ -536,8 +531,28 @@ async function handleCreatePost(e) {
     imageUrl = els.postImageUrl.value.trim();
   }
 
+  // 若未填寫標題，自動依據內容、連結、圖片檔名或分類產生標題
+  let title = els.postTitle.value.trim();
+  if (!title) {
+    if (content) {
+      title = content.split('\n')[0].slice(0, 28);
+    } else if (linkTitle) {
+      title = linkTitle;
+    } else if (state.uploadedImageName) {
+      title = state.uploadedImageName.replace(/\.[^.]+$/, '');
+    } else if (imageUrl) {
+      title = `${author} 的圖片分享`;
+    } else if (linkUrl) {
+      title = `${author} 的連結分享`;
+    } else {
+      showToast('請輸入內容、標題，或上傳一張圖片');
+      return;
+    }
+  }
+
   const tempId = 'post_' + Date.now();
-  const initialStatus = state.boardSettings.requireApproval ? 'pending' : 'approved';
+  // 預設自動直接公開 Po 文 (除非後臺明確開啟 requireApproval)
+  const initialStatus = state.boardSettings.requireApproval === true ? 'pending' : 'approved';
   const newPost = {
     id: tempId,
     author,
@@ -739,6 +754,12 @@ function handleImageFile(file) {
       els.imagePreview.src = compressedDataUrl;
       els.dropZonePrompt.classList.add('hidden');
       els.imagePreviewWrap.classList.remove('hidden');
+
+      // 若開啟「預設自動立即Po文」，選完圖片後自動發布上牆
+      const autoPublishToggle = document.getElementById('autoPublishToggle');
+      if (autoPublishToggle && autoPublishToggle.checked) {
+        handleCreatePost();
+      }
     };
     img.src = event.target.result;
   };
@@ -892,17 +913,36 @@ function bindEvents() {
     clearUploadedImage();
   });
 
-  // 全域 Ctrl+V 貼上剪貼簿截圖
+  // 全域 Ctrl+V 貼上剪貼簿截圖 或 全域拖曳圖片直接自動 Po 文
   window.addEventListener('paste', e => {
-    if (els.postModal.classList.contains('hidden')) return;
     const items = e.clipboardData && e.clipboardData.items;
     if (!items) return;
     for (let i = 0; i < items.length; i++) {
       if (items[i].type.indexOf('image') !== -1) {
         const file = items[i].getAsFile();
+        if (els.postModal.classList.contains('hidden')) {
+          openNewPostModal();
+        }
         handleImageFile(file);
-        showToast('📷 已從剪貼簿貼上圖片');
+        showToast('📷 已貼上圖片並自動發布中...');
         break;
+      }
+    }
+  });
+
+  // 支援直接把圖片拖曳到塗鴉牆畫布上就自動立即 Po 文
+  window.addEventListener('dragover', e => {
+    e.preventDefault();
+  });
+
+  window.addEventListener('drop', e => {
+    if (!els.postModal.classList.contains('hidden')) return;
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/')) {
+        e.preventDefault();
+        openNewPostModal();
+        handleImageFile(file);
       }
     }
   });
