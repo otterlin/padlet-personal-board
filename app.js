@@ -74,7 +74,13 @@ const state = {
   uploadedImageBase64: '',
   uploadedImageName: '',
   uploadedImageMime: '',
-  likedPostIds: new Set(JSON.parse(localStorage.getItem(STORAGE_KEYS.LIKED_IDS) || '[]'))
+  likedPostIds: new Set(JSON.parse(localStorage.getItem(STORAGE_KEYS.LIKED_IDS) || '[]')),
+  boardSettings: {
+    allowPosting: true,
+    requireApproval: false,
+    allowComments: true,
+    announcement: ''
+  }
 };
 
 // DOM 元素快取
@@ -154,17 +160,48 @@ function loadBoardMeta() {
     const raw = localStorage.getItem(STORAGE_KEYS.BOARD_META);
     if (!raw) return;
     const meta = JSON.parse(raw);
-    if (meta.title) els.boardTitle.textContent = meta.title;
-    if (meta.subtitle) els.boardSubtitle.textContent = meta.subtitle;
-    if (meta.bg) {
-      document.body.className = meta.bg;
-      document.querySelectorAll('.bg-dot').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.bg === meta.bg);
-      });
-    }
+    applyBoardSettings(meta);
   } catch (err) {
     console.warn('無法載入版面設定', err);
   }
+}
+
+function applyBoardSettings(meta) {
+  if (!meta) return;
+  const title = meta.boardTitle || meta.title;
+  const subtitle = meta.boardSubtitle !== undefined ? meta.boardSubtitle : meta.subtitle;
+  const bg = meta.boardBg || meta.bg;
+
+  if (title) els.boardTitle.textContent = title;
+  if (subtitle !== undefined) els.boardSubtitle.textContent = subtitle;
+  if (bg) {
+    document.body.className = bg;
+    document.querySelectorAll('.bg-dot').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.bg === bg);
+    });
+  }
+
+  if (meta.allowPosting !== undefined) state.boardSettings.allowPosting = Boolean(meta.allowPosting);
+  if (meta.requireApproval !== undefined) state.boardSettings.requireApproval = Boolean(meta.requireApproval);
+  if (meta.allowComments !== undefined) state.boardSettings.allowComments = Boolean(meta.allowComments);
+  if (meta.announcement !== undefined) state.boardSettings.announcement = String(meta.announcement || '');
+
+  // 顯示或隱藏頂部公告橫幅
+  const annBanner = document.getElementById('announcementBanner');
+  const annText = document.getElementById('announcementText');
+  if (annBanner && annText) {
+    if (state.boardSettings.announcement.trim()) {
+      annText.textContent = state.boardSettings.announcement;
+      annBanner.classList.remove('hidden');
+    } else {
+      annBanner.classList.add('hidden');
+    }
+  }
+
+  // 控制是否開放訪客新增貼文
+  const allowPost = state.boardSettings.allowPosting;
+  els.newPostTopBtn.classList.toggle('hidden', !allowPost);
+  els.fabAddBtn.classList.toggle('hidden', !allowPost);
 }
 
 function saveBoardMeta() {
@@ -172,7 +209,11 @@ function saveBoardMeta() {
   const meta = {
     title: els.boardTitle.textContent.trim() || '我的個人靈感塗鴉牆',
     subtitle: els.boardSubtitle.textContent.trim() || '',
-    bg: activeBgBtn ? activeBgBtn.dataset.bg : 'bg-cork'
+    bg: activeBgBtn ? activeBgBtn.dataset.bg : 'bg-cork',
+    announcement: state.boardSettings.announcement,
+    allowPosting: state.boardSettings.allowPosting,
+    requireApproval: state.boardSettings.requireApproval,
+    allowComments: state.boardSettings.allowComments
   };
   localStorage.setItem(STORAGE_KEYS.BOARD_META, JSON.stringify(meta));
 }
@@ -220,6 +261,10 @@ async function fetchPosts() {
       if (data && data.status === 'ok' && Array.isArray(data.posts)) {
         state.posts = data.posts;
         localStorage.setItem(STORAGE_KEYS.LOCAL_POSTS, JSON.stringify(state.posts));
+        if (data.settings) {
+          applyBoardSettings(data.settings);
+          saveBoardMeta();
+        }
       } else {
         throw new Error((data && data.message) || 'Google Sheet 回傳格式不正確');
       }
@@ -261,8 +306,11 @@ async function sendGasPost(payload) {
  * 將貼文排序並渲染至塗鴉牆
  */
 function renderPosts() {
+  // 僅顯示已公開 (approved 或未設定 status) 的貼文
+  const visiblePosts = state.posts.filter(p => !p.status || p.status === 'approved');
+
   // 排序：置頂優先，其次依時間新到舊
-  const sorted = [...state.posts].sort((a, b) => {
+  const sorted = [...visiblePosts].sort((a, b) => {
     if (Boolean(a.pinned) !== Boolean(b.pinned)) {
       return a.pinned ? -1 : 1;
     }
@@ -485,6 +533,7 @@ async function handleCreatePost(e) {
   }
 
   const tempId = 'post_' + Date.now();
+  const initialStatus = state.boardSettings.requireApproval ? 'pending' : 'approved';
   const newPost = {
     id: tempId,
     author,
@@ -498,7 +547,8 @@ async function handleCreatePost(e) {
     likes: 0,
     pinned,
     comments: [],
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    status: initialStatus
   };
 
   els.submitPostBtn.disabled = true;
@@ -516,13 +566,21 @@ async function handleCreatePost(e) {
       });
       if (res && res.status === 'ok' && res.post) {
         state.posts.unshift(res.post);
-        showToast('✅ 已發布並同步至 Google Sheet！');
+        showToast(
+          res.post.status === 'pending'
+            ? '⏳ 貼文已送出，待管理員於後臺審核通過後即會公開顯示！'
+            : '✅ 已發布並同步至 Google Sheet！'
+        );
       } else {
         throw new Error((res && res.message) || '寫入 Google Sheet 失敗');
       }
     } else {
       state.posts.unshift(newPost);
-      showToast('✨ 已發布至塗鴉牆 (本機儲存)');
+      showToast(
+        initialStatus === 'pending'
+          ? '⏳ 貼文已送出，請至後臺管理系統核准後公開！'
+          : '✨ 已發布至塗鴉牆 (本機儲存)'
+      );
     }
     localStorage.setItem(STORAGE_KEYS.LOCAL_POSTS, JSON.stringify(state.posts));
     renderPosts();
