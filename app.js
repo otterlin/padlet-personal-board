@@ -89,6 +89,7 @@ const state = {
     index: 0,
     autoPlay: true,
     intervalMs: 5000,
+    orientation: 'landscape', // 'landscape' | 'portrait'
     timerId: null,
     progressTimerId: null,
     elapsedMs: 0
@@ -157,6 +158,8 @@ const els = {
   slideshowTimerBar: document.getElementById('slideshowTimerBar'),
   slideCounterBadge: document.getElementById('slideCounterBadge'),
   slideBoardName: document.getElementById('slideBoardName'),
+  slideOrientLandscapeBtn: document.getElementById('slideOrientLandscapeBtn'),
+  slideOrientPortraitBtn: document.getElementById('slideOrientPortraitBtn'),
   slideAutoPlayBtn: document.getElementById('slideAutoPlayBtn'),
   slideAutoPlayText: document.getElementById('slideAutoPlayText'),
   slideIntervalSelect: document.getElementById('slideIntervalSelect'),
@@ -382,7 +385,8 @@ function renderPosts() {
 function createCardElement(post) {
   const article = document.createElement('article');
   const colorClass = `color-${post.color || 'white'}`;
-  article.className = `padlet-card ${colorClass}`;
+  const hasImgClass = post.imageUrl ? 'has-image' : '';
+  article.className = `padlet-card ${colorClass} ${hasImgClass}`.trim();
   article.dataset.id = post.id;
 
   const authorName = post.author || '匿名訪客';
@@ -958,8 +962,10 @@ function renderCurrentSlide() {
     `;
   }
 
+  const orientClass = `orient-${state.slideshow.orientation || 'landscape'}`;
+
   els.slideCardContainer.innerHTML = `
-    <div class="slide-showcase-card color-${escapeHtml(post.color || 'white')} ${hasImage ? '' : 'no-image'}">
+    <div class="slide-showcase-card ${orientClass} color-${escapeHtml(post.color || 'white')} ${hasImage ? '' : 'no-image'}">
       ${
         hasImage
           ? `<div class="slide-media-col">
@@ -1072,6 +1078,17 @@ function toggleSlideshowFullscreen() {
   }
 }
 
+function setSlideshowOrientation(orient) {
+  state.slideshow.orientation = orient;
+  if (els.slideOrientLandscapeBtn && els.slideOrientPortraitBtn) {
+    els.slideOrientLandscapeBtn.classList.toggle('active-orient', orient === 'landscape');
+    els.slideOrientPortraitBtn.classList.toggle('active-orient', orient === 'portrait');
+  }
+  if (state.slideshow.active) {
+    renderCurrentSlide();
+  }
+}
+
 /**
  * 事件綁定
  */
@@ -1105,12 +1122,18 @@ function bindEvents() {
     });
   });
 
-  // 檢視模式切換 (瀑布流 / 單欄列表)
+  // 檢視模式切換 (直式瀑布流 / 橫式並排卡片 / 單欄列表)
   document.querySelectorAll('.layout-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.layout-btn').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      els.postsContainer.classList.toggle('stream-view', btn.dataset.layout === 'stream');
+      const layout = btn.dataset.layout;
+      els.postsContainer.classList.toggle('landscape-view', layout === 'landscape');
+      els.postsContainer.classList.toggle('stream-view', layout === 'stream');
+      // 同步播放模式的預設直式/橫式方向
+      if (layout === 'portrait' || layout === 'landscape') {
+        setSlideshowOrientation(layout);
+      }
     });
   });
 
@@ -1225,6 +1248,12 @@ function bindEvents() {
   els.slidePrevBtn.addEventListener('click', prevSlide);
   els.slideAutoPlayBtn.addEventListener('click', toggleSlideshowAutoPlay);
   els.slideFullscreenBtn.addEventListener('click', toggleSlideshowFullscreen);
+  if (els.slideOrientLandscapeBtn) {
+    els.slideOrientLandscapeBtn.addEventListener('click', () => setSlideshowOrientation('landscape'));
+  }
+  if (els.slideOrientPortraitBtn) {
+    els.slideOrientPortraitBtn.addEventListener('click', () => setSlideshowOrientation('portrait'));
+  }
   els.slideIntervalSelect.addEventListener('change', e => {
     state.slideshow.intervalMs = Number(e.target.value || 5000);
     resetSlideshowTimer();
