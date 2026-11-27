@@ -4,6 +4,8 @@
  * 同時提供 LocalStorage 本機模式，開箱即用
  */
 
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbw22p1vBhbt1B5vDhoxNOSqYtWj8XMGKG5_QeXC4i9qpQgTSEmDy0Mj_IwOq-A5-Clq/exec';
+
 const STORAGE_KEYS = {
   GAS_URL: 'padlet_personal_gas_url',
   LOCAL_POSTS: 'padlet_personal_local_posts',
@@ -65,7 +67,7 @@ const DEFAULT_DEMO_POSTS = [
 
 // 應用程式狀態
 const state = {
-  gasUrl: localStorage.getItem(STORAGE_KEYS.GAS_URL) || '',
+  gasUrl: localStorage.getItem(STORAGE_KEYS.GAS_URL) || DEFAULT_GAS_URL,
   posts: [],
   currentCategory: 'all',
   searchQuery: '',
